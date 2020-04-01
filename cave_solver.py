@@ -85,13 +85,19 @@ class Cave:
     def sees_too_many(self, coord):
         return self.num_seen(coord, see_empty=False) > self.hints[coord]
 
-    # TODO: Write this function
-    def disconnects_cave(self):
+    def disconnected_cave(self):
         return False
 
     def mistake(self, coord):
         wrong_sight = self.sees_too_few(coord) or self.sees_too_many(coord)
-        return wrong_sight or self.disconnects_cave()
+        return wrong_sight or self.disconnected_cave()
+
+    def forcing_moves(self):
+        pass
+
+    def heuristic_ordering(self):
+        return sorted(self.grid)
+
 
     def solved(self):
         if any(i == ' ' for i in self.grid.values()):
@@ -106,11 +112,12 @@ class Cave:
         if debug:
             time.sleep(0.5)
             print(self)
+        self.forcing_moves()
         if self.solved():
             return True
         if any(self.mistake(coord) for coord in self.hints):
             return False
-        for coord in sorted(self.grid):
+        for coord in self.heuristic_ordering():
             if self.grid[coord] != ' ':
                 continue
             self.grid[coord] = '◼'
