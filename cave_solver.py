@@ -80,16 +80,10 @@ class Cave:
         return seen
 
     def sees_too_few(self, coord):
-        for coord in self.hints:
-            if self.num_seen(coord, see_empty=True) < self.hints[coord]:
-                return True
-        return False
+        return self.num_seen(coord, see_empty=True) < self.hints[coord]
 
     def sees_too_many(self, coord):
-        for coord in self.hints:
-            if self.num_seen(coord, see_empty=False) > self.hints[coord]:
-                return True
-        return False
+        return self.num_seen(coord, see_empty=False) > self.hints[coord]
 
     # TODO: Write this function
     def disconnects_cave(self):
