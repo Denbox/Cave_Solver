@@ -64,26 +64,42 @@ class Cave:
         valid_fill = lambda x: isinstance(x, int) or x == '◼' or val == '◻'
         return all(map(valid_fill, self.grid.values()))
 
-    def num_seen(self, coord, see_empty=True):
-        seen = 1
-        # move by distance in direction specified from coord
-        shift = lambda dir, dist: (coord[0]+dir[0]*dist, coord[1]+dir[1]*dist)
-        on_board = lambda x: x in self.grid
-        white_or_num = lambda x: self.grid[x] == '◻' or x in self.hints
-        empty = lambda x: self.grid[x] == ' ' and see_empty
-        can_see = lambda x: on_board(x) and (white_or_num(x) or empty(x))
-        for dir in [(0,1), (1,0), (0,-1), (-1,0)]:
-            dist = 1
-            while can_see(shift(dir, dist)):
-                dist += 1
-            seen += dist - 1
-        return seen
+    # given a coordinate in grid, shift function, and condition to continue,
+    # count the number of coordinates traversed
+    def traverse(self, coord, shift, condition):
+        if coord in self.grid and condition(coord):
+            return 1 + self.traverse(shift(coord), shift, condition)
+        return 0
+
+    def num_seen(self, coord, condition):
+        up    = lambda coord: (coord[0]    , coord[1] + 1)
+        down  = lambda coord: (coord[0]    , coord[1] - 1)
+        right = lambda coord: (coord[0] + 1, coord[1]    )
+        left  = lambda coord: (coord[0] - 1, coord[1]    )
+        look_up    = self.traverse(   up(coord),    up, condition)
+        look_down  = self.traverse( down(coord),  down, condition)
+        look_right = self.traverse(right(coord), right, condition)
+        look_left  = self.traverse( left(coord),  left, condition)
+        return 1 + look_up + look_down + look_right + look_left
+
+    def max_seen(self, coord):
+        see_clear = lambda x: self.grid[x] == '◻'
+        see_empty = lambda x: self.grid[x] == ' '
+        see_hint  = lambda x: x in self.hints
+        condition = lambda x: see_clear(x) or see_empty(x) or see_hint(x)
+        return self.num_seen(coord, condition)
+
+    def min_seen(self, coord):
+        see_clear = lambda x: self.grid[x] == '◻'
+        see_hint  = lambda x: x in self.hints
+        condition = lambda x: see_clear(x) or see_hint(x)
+        return self.num_seen(coord, condition)
 
     def sees_too_few(self, coord):
-        return self.num_seen(coord, see_empty=True) < self.hints[coord]
+        return self.max_seen(coord) < self.hints[coord]
 
     def sees_too_many(self, coord):
-        return self.num_seen(coord, see_empty=False) > self.hints[coord]
+        return self.min_seen(coord) > self.hints[coord]
 
     def disconnected_cave(self):
         return False
@@ -93,7 +109,8 @@ class Cave:
         return wrong_sight or self.disconnected_cave()
 
     def forcing_moves(self):
-        pass
+        for hint in self.hints:
+            pass
 
     def heuristic_ordering(self):
         return sorted(self.grid)
@@ -112,11 +129,11 @@ class Cave:
         if debug:
             time.sleep(0.5)
             print(self)
-        self.forcing_moves()
         if self.solved():
             return True
         if any(self.mistake(coord) for coord in self.hints):
             return False
+        self.forcing_moves()
         for coord in self.heuristic_ordering():
             if self.grid[coord] != ' ':
                 continue

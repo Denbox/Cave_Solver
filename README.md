@@ -13,3 +13,4 @@ There is also some work required that isn't about optimization.
 * `disconnected_cave` - allows us to account for the final criteria we missed to solve cave puzzles. It should involve some fun graph algorithm work!
 * handling cave problems with no solution
 * handling cave problems with multiple solutions
+* add a scoring mechanism to measure how significant each new optimization is
