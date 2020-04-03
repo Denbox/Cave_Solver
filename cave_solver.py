@@ -61,7 +61,7 @@ class Cave:
         return top_line + '\n' + '\n'.join(body_lines) + '\n' + bottom_line
 
     def filled(self):
-        valid_fill = lambda x: isinstance(x, int) or x == '◼' or val == '◻'
+        valid_fill = lambda x: isinstance(x, int) or x == '◼' or x == '◻'
         return all(map(valid_fill, self.grid.values()))
 
     # given a coordinate in grid, shift function, and condition to continue,
@@ -81,9 +81,6 @@ class Cave:
         look_right = self.traverse(right(coord), right, condition)
         look_left  = self.traverse( left(coord),  left, condition)
         return [coord] + look_up + look_down + look_right + look_left
-
-    # def num_seen(self, coord, condition):
-        # return len(self.coords_seen(coord, condition))
 
     def max_seen(self, coord):
         see_clear = lambda x: self.grid[x] == '◻'
@@ -105,26 +102,47 @@ class Cave:
         return len(self.min_seen(coord)) > self.hints[coord]
 
     def disconnected_cave(self):
-        return False
+        def disconnected_cave_helper(coord):
+            seen_coords.add(coord)
+            for new_coord in self.within_range(coord, self.max_seen(coord), 1):
+                if new_coord not in seen_coords:
+                    disconnected_cave_helper(new_coord)
+        start = list(self.hints)[0]
+        seen_coords = set()
+        disconnected_cave_helper(start)
+        return len([x for x in self.grid.values() if x != '◼']) != len(seen_coords)
 
     def mistake(self, coord):
         wrong_sight = self.sees_too_few(coord) or self.sees_too_many(coord)
         return wrong_sight or self.disconnected_cave()
 
+    def within_range(self, start, coords, dist):
+        in_range = lambda x, y: abs(x[0] - y[0]) + abs(x[1] - y[1]) <= dist
+        return [coord for coord in coords if in_range(start, coord)]
+
+    def fill_empty(self, hint):
+        update_grid = False
+        visible = self.max_seen(hint)
+        possible_empty_placements = len(visible)
+        needed_empty_placements = self.hints[hint]
+        leftover = possible_empty_placements - needed_empty_placements
+        return update_grid
+
     def forcing_moves(self):
+        update_grid = False
         for hint in self.hints:
-            pass
+            update_grid |= self.fill_empty(hint)
+        return update_grid
 
     def heuristic_ordering(self):
         # return sorted(self.grid)
         # write a faster solver by first placing squares that hints can see
         # try for smaller hints first
-        small_hints_first = sorted(self.hints, key = lambda x: self.hints[x])
+        small_hints_first = sorted(self.hints, key = lambda x: -self.hints[x])
         ordering = []
         for hint in small_hints_first:
             visible = self.max_seen(hint)
-            close_enough = [coord for coord in visible if ((coord[0] - hint[0]) ** 2 + (coord[1] - hint[1]) ** 2) ** 0.5 <= self.grid[hint] + 1]
-            for coord in close_enough:
+            for coord in self.within_range(hint, visible, self.grid[hint] + 1):
                 if coord not in ordering:
                     ordering.append(coord)
         for coord in sorted(self.grid):
@@ -139,33 +157,35 @@ class Cave:
         if any(i == ' ' for i in self.grid.values()):
             return False
         for coord in self.hints:
-            if self.sees_too_few(coord) or self.sees_too_many(coord):
+            if self.mistake(coord):
                 return False
         return True
 
 
     def solve(self, debug=False):
         if debug:
-            time.sleep(0.1)
+            # time.sleep(0.1)
             print(self)
         if self.solved():
             return True
         if any(self.mistake(coord) for coord in self.hints):
             return False
-        self.forcing_moves()
-        for coord in self.heuristic_ordering():
-            if self.grid[coord] != ' ':
-                continue
-            self.grid[coord] = '◼'
-            solution_shaded = self.solve(debug=debug)
-            if solution_shaded:
-                return True
-            self.grid[coord] = '◻'
-            solution_clear = self.solve(debug=debug)
-            if solution_clear:
-                return True
-            self.grid[coord] = ' '
-            return False
+        # update_grid = self.forcing_moves()
+        # if update_grid:
+            # return solve(self, debug=debug)
+
+        coord = [x for x in self.heuristic_ordering() if self.grid[x] == ' '][0]
+        self.grid[coord] = '◼'
+        solution_shaded = self.solve(debug=debug)
+        if solution_shaded:
+            return True
+        self.grid[coord] = '◻'
+        solution_clear = self.solve(debug=debug)
+        if solution_clear:
+            return True
+        self.grid[coord] = ' '
+        return False
+        # undo forcing moves
 
 hints = {
     (0,1) : 3,
@@ -204,7 +224,8 @@ hints = {
     (0,1) : 3,
     (5,1) : 7,
     (6,1) : 3,
-    (0,3) : 13,
+    (0,3) : 9,
+    (4,3) : 13,
     (3,4) : 11,
     (1,5) : 5,
     (7,5) : 5,
@@ -231,7 +252,35 @@ hints = {
     (4,0) : 5,
     (4,2) : 1,
 }
+#
+width = 10
+height = 10
+hints = {
+    (0,0) : 2,
+    (3,0) : 2,
+    (6,0) : 8,
+    (8,0) : 8,
+    (9,1) : 4,
+    (6,2) : 8,
+    (0,3) : 6,
+    (3,3) : 10,
+    (7,3) : 10,
+    (9,3) : 6,
+    (4,4) : 14,
+    (5,5) : 12,
+    (0,6) : 6,
+    (2,6) : 8,
+    (6,6) : 12,
+    (9,6) : 6,
+    (3,7) : 6,
+    (0,8) : 4,
+    (1,9) : 12,
+    (3,9) : 4,
+    (6,9) : 4,
+    (9,9) : 4,
+}
 
 c = Cave(hints, width, height)
 print(c)
 c.solve(debug=True)
+print(c)
